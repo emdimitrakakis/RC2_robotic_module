@@ -20,7 +20,7 @@ def dxl_talker():
             print("Motor PWM value should be between -885 and 885")
             m_value = input("Enter motor PWM value (enter -1 to terminate):")
 
-    	rospy.loginfo("Motor PWM value is %d", m_value)
+        rospy.loginfo("Motor PWM value is %d", m_value)
         pub.publish(m_value)
 
         rate.sleep()

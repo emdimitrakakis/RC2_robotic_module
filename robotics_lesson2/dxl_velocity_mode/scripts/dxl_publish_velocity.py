@@ -20,7 +20,7 @@ def dxl_talker():
             print("Motor velocity value should be between -250 and 250")
             m_value = input("Enter motor velocity value (enter -1 to terminate):")
 
-    	rospy.loginfo("Motor velocity value is %d", m_value)
+        rospy.loginfo("Motor velocity value is %d", m_value)
         pub.publish(m_value)
 
         rate.sleep()
