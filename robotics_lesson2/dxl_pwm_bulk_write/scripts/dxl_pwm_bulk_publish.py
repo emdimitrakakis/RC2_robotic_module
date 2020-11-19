@@ -14,23 +14,23 @@ def dxl_talker():
 
     while not rospy.is_shutdown():
 
-        m_value1 = input("Enter motor 1 PWM value (enter -1 to terminate):")
+        m_value1 = int(input("Enter motor 1 PWM value (enter -1 to terminate):"))
 
         if m_value1 == -1:
             break;
 
         while m_value1 > 885 or m_value1 < -885:
             print("Motor 1 PWM value should be between -885 and 885")
-            m_value1 = input("Enter motor PWM value (enter -1 to terminate):")
+            m_value1 = int(input("Enter motor PWM value (enter -1 to terminate):"))
 
-        m_value2 = input("Enter motor 2 PWM value (enter -1 to terminate):")
+        m_value2 = int(input("Enter motor 2 PWM value (enter -1 to terminate):"))
 
         if m_value2 == -1:
             break;
 
         while m_value2 > 885 or m_value2 < -885:
             print("Motor 2 PWM value should be between -885 and 885")
-            m_value2 = input("Enter motor 2 PWM value (enter -1 to terminate):")
+            m_value2 = int(input("Enter motor 2 PWM value (enter -1 to terminate):"))
         
         m_value_array.data = [m_value1, m_value2]
 
