@@ -20,7 +20,7 @@ else:
         return ch
 
 import rospy
-from std_msgs.msg import Int32
+from std_msgs.msg import Int32MultiArray
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 
 # Control table address
@@ -104,7 +104,10 @@ def dxl_torque_enable():
     else:
         print("Torque for ID %03d enabled" % DXL_ID[1])
 
-def dxl_write(motor_pwm_value_1, motor_pwm_value_2):
+def dxl_write(motor_values):
+    motor_pwm_value_1 = motor_values[0]
+    motor_pwm_value_2 = motor_values[1]
+
     # Write goal pwm position for ID 1
     dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL_ID[0], ADDR_PRO_GOAL_PWM, motor_pwm_value_1)
     if dxl_comm_result != COMM_SUCCESS:
@@ -158,6 +161,28 @@ def dxl_torque_disable():
 
     # Close port
     portHandler.closePort()
+
+def callback(data):
+    #rospy.loginfo("I heard %d", data.data)
+    dxl_write(data.data)
+    
+def dxl_listener():
+    # In ROS, nodes are uniquely named. If two nodes with the same
+    # name are launched, the previous one is kicked off. The
+    # anonymous=True flag means that rospy will choose a unique
+    # name for our 'listener' node so that multiple listeners can
+    # run simultaneously.
+    rospy.init_node('dxl_listener', anonymous=True)
+
+    rospy.Subscriber("motor_pwm_values", Int32MultiArray, callback)
+    
+    print("Press ESC to quit!")
+
+    #instead of spin(), keep node running until ESC is pressed
+    while not rospy.core.is_shutdown():
+        rospy.rostime.wallsleep(0.5)
+        if getch() == chr(0x1b):
+            break
     
 
 if __name__ == '__main__':
@@ -167,15 +192,6 @@ if __name__ == '__main__':
     #enable torque for both motors
     dxl_torque_enable()
 
-    #write the pwm value for both motors
-    dxl_write(150, 150)
-
-    print("Press ESC to exit")
-
-    #keep running until ESC is pressed
-    while 1:
-        if getch() == chr(0x1b):
-            dxl_write(0, 0)
-            break
+    dxl_listener()
 
     dxl_torque_disable()
