@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import rospy
 from std_msgs.msg import Int32
@@ -11,14 +11,14 @@ def dxl_talker():
 
     while not rospy.is_shutdown():
 
-        m_value = int(input("Enter motor velocity value (enter -1 to terminate):"))
+        m_value = input("Enter motor velocity value (enter -1 to terminate):")
 
         if m_value == -1:
             break;
 
         while m_value > 250 or m_value < -250:
             print("Motor velocity value should be between -250 and 250")
-            m_value = int(input("Enter motor velocity value (enter -1 to terminate):"))
+            m_value = input("Enter motor velocity value (enter -1 to terminate):")
 
         rospy.loginfo("Motor velocity value is %d", m_value)
         pub.publish(m_value)

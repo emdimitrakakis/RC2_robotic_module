@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
@@ -24,11 +24,9 @@ from std_msgs.msg import Int32
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 
 # Control table address
-ADDR_OPERATING_MODE    = 11		  # Control table address for operating mode
-ADDR_PRO_TORQUE_ENABLE = 64               # Control table address is different in Dynamixel model
-ADDR_PRO_GOAL_VEL      = 104              # Control table address for goal velocity
-ADDR_PRO_PRESENT_VEL   = 128              # Control table address for present velocity
-ADDR_PRO_PRESENT_LOAD  = 126              # Control table address for present load
+ADDR_PRO_TORQUE_ENABLE      = 64               # Control table address is different in Dynamixel model
+ADDR_PRO_GOAL_POSITION      = 116
+ADDR_PRO_PRESENT_POSITION   = 132
 
 # Protocol version
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
@@ -38,8 +36,12 @@ DXL_ID                      = 1                 # Dynamixel ID : 1
 BAUDRATE                    = 57600             # Dynamixel default baudrate : 57600
 DEVICENAME                  = '/dev/ttyUSB0'    # Check which port is being used on your controller
                                                 # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
+
 TORQUE_ENABLE               = 1                 # Value for enabling the torque
 TORQUE_DISABLE              = 0                 # Value for disabling the torque
+DXL_MINIMUM_POSITION_VALUE  = 2000           # Dynamixel will rotate between this value
+DXL_MAXIMUM_POSITION_VALUE  = 3000            # and this value (note that the Dynamixel would not move when the position value is out of movable range. Check e-manual about the range of the Dynamixel you use.)
+DXL_MOVING_STATUS_THRESHOLD = 5                # Dynamixel moving status threshold
 
 # Initialize PortHandler instance
 # Set the port path
@@ -69,15 +71,6 @@ else:
     getch()
     quit()
 
-def dxl_operating_mode(operating_mode_value):
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_OPERATING_MODE, operating_mode_value)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-    else:
-        print("Velocity operating mode enabled.")
-
 def dxl_torque_enable():
     # Enable Dynamixel Torque
     dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
@@ -90,22 +83,26 @@ def dxl_torque_enable():
 
     print("Torque enabled.")
 
-def dxl_write(sub_motor_vel_value):
-    # Write goal velocity position
-    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_VEL, sub_motor_vel_value)
+def dxl_write(sub_motor_value):
+    # Write goal position
+    dxl_comm_result, dxl_error = packetHandler.write4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_POSITION, sub_motor_value)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-    # Read present position
-    dxl_present_vel, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_VEL)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    while 1:
+        # Read present position
+        dxl_present_position, dxl_comm_result, dxl_error = packetHandler.read4ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_POSITION)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-    rospy.loginfo("Present velocity is: %03d", dxl_present_vel)
+        #print("[ID:%d] GoalPos:%d  PresPos:%d" % (DXL_ID, sub_motor_value, dxl_present_position))
+        if not abs(sub_motor_value - dxl_present_position) > DXL_MOVING_STATUS_THRESHOLD:
+            rospy.loginfo("GoalPos is %03d: and PresPos is: %03d", sub_motor_value, dxl_present_position)
+            break
 
 def dxl_torque_disable():
     # Disable Dynamixel Torque
@@ -133,7 +130,7 @@ def dxl_listener():
     # run simultaneously.
     rospy.init_node('dxl_listener', anonymous=True)
 
-    rospy.Subscriber("motor_vel_value", Int32, callback)
+    rospy.Subscriber("motor_value", Int32, callback)
     
     print("Press ESC to quit!")
 
@@ -144,9 +141,6 @@ def dxl_listener():
             break
 
 if __name__ == '__main__':
-    
-    dxl_operating_mode(1) # this is the operating mode value for velocity
-
     dxl_torque_enable()
 
     dxl_listener()

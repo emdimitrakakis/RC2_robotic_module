@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import os
@@ -20,11 +20,11 @@ else:
         return ch
 
 import rospy
-from std_msgs.msg import Int32MultiArray
+from std_msgs.msg import Int32
 from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 
 # Control table address
-ADDR_OPERATING_MODE    = 11		  # The Control table address for operating
+ADDR_OPERATING_MODE    = 11		  # Control table value for operating mode
 ADDR_PRO_TORQUE_ENABLE = 64               # Control table address is different in Dynamixel model
 ADDR_PRO_GOAL_PWM      = 100              # Control table address for goal PWM
 ADDR_PRO_PRESENT_PWM   = 124              # Control table address for present PWM
@@ -33,7 +33,7 @@ ADDR_PRO_PRESENT_PWM   = 124              # Control table address for present PW
 PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
 # Default setting
-DXL_ID                      = [1, 2]             # Dynamixel ID for the two motors
+DXL_ID                      = 1                 # Dynamixel ID : 1
 BAUDRATE                    = 57600             # Dynamixel default baudrate : 57600
 DEVICENAME                  = '/dev/ttyUSB0'    # Check which port is being used on your controller
                                                 # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
@@ -69,98 +69,56 @@ else:
     quit()
 
 def dxl_operating_mode(operating_mode_value):
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID[0], ADDR_OPERATING_MODE, operating_mode_value)
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_OPERATING_MODE, operating_mode_value)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
     else:
-        print("PWM operating mode for ID %03d enabled" % DXL_ID[0])
-
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID[1], ADDR_OPERATING_MODE, operating_mode_value)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-    else:
-        print("PWM operating mode for ID %03d enabled" % DXL_ID[1])
+        print("PWM operating mode enabled.")
 
 def dxl_torque_enable():
     # Enable Dynamixel Torque
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID[0], ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
     else:
-        print("Torque for ID %03d enabled" % DXL_ID[0])
+        print("Dynamixel has been successfully connected")
 
-    # Enable Dynamixel Torque
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID[1], ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-    else:
-        print("Torque for ID %03d enabled" % DXL_ID[1])
+    print("Torque enabled.")
 
-def dxl_write(motor_values):
-    motor_pwm_value_1 = motor_values[0]
-    motor_pwm_value_2 = motor_values[1]
-
-    # Write goal pwm position for ID 1
-    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL_ID[0], ADDR_PRO_GOAL_PWM, motor_pwm_value_1)
+def dxl_write(sub_motor_pwm_value):
+    # Write goal pwm position
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_PWM, sub_motor_pwm_value)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-    # Read present position for ID 1
-    dxl_present_pwm_1, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID[0], ADDR_PRO_PRESENT_PWM)
+    # Read present position
+    dxl_present_pwm, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_PWM)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
 
-    print("Present PWM for ID %03d is: %03d" % (DXL_ID[0], dxl_present_pwm_1))
-
-    # Write goal pwm position for ID 2
-    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL_ID[1], ADDR_PRO_GOAL_PWM, motor_pwm_value_2)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-    # Read present position for ID 2
-    dxl_present_pwm_2, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID[1], ADDR_PRO_PRESENT_PWM)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-
-    print("Present PWM for ID %03d is: %03d" % (DXL_ID[1], dxl_present_pwm_2))
+    rospy.loginfo("Present PWM is: %03d", dxl_present_pwm)
 
 def dxl_torque_disable():
     # Disable Dynamixel Torque
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID[0], ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
     if dxl_comm_result != COMM_SUCCESS:
         print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
-    
-    print("Torque for ID %03d disabled" % DXL_ID[0])
-
-    # Disable Dynamixel Torque
-    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID[1], ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
-    if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-    elif dxl_error != 0:
-        print("%s" % packetHandler.getRxPacketError(dxl_error))
-    
-    print("Torque for ID %03d disabled" % DXL_ID[1])
 
     # Close port
     portHandler.closePort()
+
+    print("Torque disabled.")
+
 
 def callback(data):
     #rospy.loginfo("I heard %d", data.data)
@@ -174,7 +132,7 @@ def dxl_listener():
     # run simultaneously.
     rospy.init_node('dxl_listener', anonymous=True)
 
-    rospy.Subscriber("motor_pwm_values", Int32MultiArray, callback)
+    rospy.Subscriber("motor_pwm_value", Int32, callback)
     
     print("Press ESC to quit!")
 
@@ -183,13 +141,11 @@ def dxl_listener():
         rospy.rostime.wallsleep(0.5)
         if getch() == chr(0x1b):
             break
-    
 
 if __name__ == '__main__':
     
     dxl_operating_mode(16) # this is the operating mode value for PWM
 
-    #enable torque for both motors
     dxl_torque_enable()
 
     dxl_listener()
