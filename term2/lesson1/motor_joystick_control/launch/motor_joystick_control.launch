@@ -4,6 +4,6 @@
     <param name="baud" value="57600"/>
   </node>
 
-  <node pkg="read_joystick" type="joystick_listener.py" name="joystick_listener" output="screen">
+  <node pkg="motor_joystick_control" type="motor_joystick_control.py" name="motor_joystick_control" output="screen">
   </node>
 </launch>

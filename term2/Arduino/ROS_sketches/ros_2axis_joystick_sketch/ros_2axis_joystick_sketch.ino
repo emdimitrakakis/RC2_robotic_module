@@ -14,7 +14,7 @@ void setup() {
   nh.initNode();
   nh.advertise(pub);
   
-  Serial.begin(9600);
+  Serial.begin(57600);
   pinMode(SW,INPUT);
   digitalWrite(SW,HIGH);
 
@@ -44,7 +44,5 @@ void loop() {
   //publish the variable over ROS  
   pub.publish(&joystick_values);
   nh.spinOnce();
-
-  delay(100);
 
 }
