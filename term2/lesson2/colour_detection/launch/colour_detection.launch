@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="colour_detection" type="colour_detection_node.py" name="colour_detection_node" output="screen">
+  </node>
+</launch>

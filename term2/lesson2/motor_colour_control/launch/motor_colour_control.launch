@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="motor_colour_control" type="motor_colour_control_node.py" name="motor_colour_control_node" output="screen">
+  </node>
+</launch>
