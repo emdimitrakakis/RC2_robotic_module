@@ -1,83 +1,158 @@
 #!/usr/bin/env python
-import cv2 
-import numpy as np 
-import imutils
+# -*- coding: utf-8 -*-
+
+import os
+
+if os.name == 'nt':
+    import msvcrt
+    def getch():
+        return msvcrt.getch().decode()
+else:
+    import sys, tty, termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    def getch():
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
 import rospy
 from std_msgs.msg import Float32MultiArray
+from dynamixel_sdk import *                    # Uses Dynamixel SDK library
 
-# Webcamera no 0 is used to capture the frames 
-cap = cv2.VideoCapture(0) 
-rospy.init_node('colour_detecion_node', anonymous=True)
+# Control table address
+ADDR_OPERATING_MODE    = 11		  # Control table value for operating mode
+ADDR_PRO_TORQUE_ENABLE = 64               # Control table address is different in Dynamixel model
+ADDR_PRO_GOAL_PWM      = 100              # Control table address for goal PWM
+ADDR_PRO_PRESENT_PWM   = 124              # Control table address for present PWM
 
-my_pub = rospy.Publisher('colour_detection_pub', Float32MultiArray, queue_size = 1)
+# Protocol version
+PROTOCOL_VERSION            = 2.0               # See which protocol version is used in the Dynamixel
 
-position_vector = Float32MultiArray()
-position_vector.data = []
+# Default setting
+DXL_ID                      = 1                 # Dynamixel ID : 1
+BAUDRATE                    = 57600             # Dynamixel default baudrate : 57600
+DEVICENAME                  = '/dev/ttyUSB0'    # Check which port is being used on your controller
+                                                # ex) Windows: "COM1"   Linux: "/dev/ttyUSB0" Mac: "/dev/tty.usbserial-*"
+TORQUE_ENABLE               = 1                 # Value for enabling the torque
+TORQUE_DISABLE              = 0                 # Value for disabling the torque
 
-flag = 0
+# Initialize PortHandler instance
+# Set the port path
+# Get methods and members of PortHandlerLinux or PortHandlerWindows
+portHandler = PortHandler(DEVICENAME)
 
-# This drives the program into an infinite loop. 
-while(1):	 
-	# Captures the live stream frame-by-frame 
-	_, frame = cap.read() 
-	# Converts images from BGR to HSV 
-	hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
-	lower_color_thres = np.array([0,150,150]) 
-	upper_color_thres = np.array([255,255, 255])
-	# Here we are defining range of bluecolor in HSV 
-	# This creates a mask of blue coloured 
-	# objects found in the frame. 
-	mask = cv2.inRange(hsv, lower_color_thres, upper_color_thres) 
-	mask = cv2.erode(mask, None, iterations=2)
-	mask = cv2.dilate(mask, None, iterations=2)
-	# find contours in the mask and initialize the current
-	# (x, y) center of the ball
-	cnts = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-	cnts = imutils.grab_contours(cnts)
-	center = None
-	
-	# only proceed if at least one contour was found
-	if len(cnts) > 0:
-		# find the largest contour in the mask, then use
-		# it to compute the minimum enclosing circle and
-		# centroid
+# Initialize PacketHandler instance
+# Set the protocol version
+# Get methods and members of Protocol1PacketHandler or Protocol2PacketHandler
+packetHandler = PacketHandler(PROTOCOL_VERSION)
 
-		c = max(cnts, key=cv2.contourArea)
-		((x, y), radius) = cv2.minEnclosingCircle(c)
-		M = cv2.moments(c)
+# Open port
+if portHandler.openPort():
+    print("Succeeded to open the port")
+else:
+    print("Failed to open the port")
+    print("Press any key to terminate...")
+    getch()
+    quit()
 
-		if flag == 0:
-			center0a = int(M["m10"] / M["m00"])
-			center0b = int(M["m01"] / M["m00"])
-			flag = 1
+# Set port baudrate
+if portHandler.setBaudRate(BAUDRATE):
+    print("Succeeded to change the baudrate")
+else:
+    print("Failed to change the baudrate")
+    print("Press any key to terminate...")
+    getch()
+    quit()
 
-		position_vector.data = [float(int(M["m10"] / M["m00"]) - center0a)/1000, float(int(M["m01"] / M["m00"]) - center0b)/1000]
-		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
-		# only proceed if the radius meets a minimum size
-		if radius > 1:
-			# draw the circle and centroid on the frame,
-			# then update the list of tracked points
-			cv2.circle(frame, (int(x), int(y)), int(radius),
-				(0, 255, 255), 2)
-			cv2.circle(frame, center, 5, (0, 0, 255), -1)
-		my_pub.publish(position_vector)
-	
-	# The bitwise and of the frame and mask is done so 
-	# that only the blue coloured objects are highlighted 
-	# and stored in res 
-	res = cv2.bitwise_and(frame,frame, mask= mask) 
-	cv2.imshow('frame',frame) 
-	cv2.imshow('mask',mask) 
-	cv2.imshow('res',res) 
+def dxl_operating_mode(operating_mode_value):
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_OPERATING_MODE, operating_mode_value)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    else:
+        print("PWM operating mode enabled.")
 
-	# This displays the frame, mask 
-	# and res which we created in 3 separate windows. 
-	k = cv2.waitKey(5) & 0xFF
-	if k == 27:
-		break
+def dxl_torque_enable():
+    # Enable Dynamixel Torque
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_ENABLE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+    else:
+        print("Dynamixel has been successfully connected")
 
-# Destroys all of the HighGUI windows. 
-cv2.destroyAllWindows() 
+    print("Torque enabled.")
 
-# release the captured frame 
-cap.release() 
+def dxl_write(sub_motor_pwm_value):
+    # Write goal pwm position
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_GOAL_PWM, sub_motor_pwm_value)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+    # Read present position
+    dxl_present_pwm, dxl_comm_result, dxl_error = packetHandler.read2ByteTxRx(portHandler, DXL_ID, ADDR_PRO_PRESENT_PWM)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+    rospy.loginfo("Present PWM is: %03d", dxl_present_pwm)
+
+def dxl_torque_disable():
+    # Disable Dynamixel Torque
+    dxl_comm_result, dxl_error = packetHandler.write1ByteTxRx(portHandler, DXL_ID, ADDR_PRO_TORQUE_ENABLE, TORQUE_DISABLE)
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+    # Close port
+    portHandler.closePort()
+
+    print("Torque disabled.")
+
+
+def callback(data):
+    #rospy.loginfo("I heard %d", data.data)
+    if data.data[0] > 0.1:
+	dxl_write(150)
+    elif data.data[0] < -0.1:
+    	dxl_write(-150)
+    else:
+        dxl_write(0)
+
+def dxl_listener():
+    # In ROS, nodes are uniquely named. If two nodes with the same
+    # name are launched, the previous one is kicked off. The
+    # anonymous=True flag means that rospy will choose a unique
+    # name for our 'listener' node so that multiple listeners can
+    # run simultaneously.
+    rospy.init_node('motor_colour_control_node', anonymous=True)
+
+    rospy.Subscriber("colour_detected", Float32MultiArray, callback)
+    
+    print("Press Ctrl+C multiple times to quit!")
+
+    #instead of spin(), keep node running until ESC is pressed
+    while not rospy.core.is_shutdown():
+        rospy.rostime.wallsleep(0.5)
+        if getch() == chr(0x1b):
+            break
+
+if __name__ == '__main__':
+    
+    dxl_operating_mode(16) # this is the operating mode value for PWM
+
+    dxl_torque_enable()
+
+    dxl_listener()
+
+    dxl_torque_disable()

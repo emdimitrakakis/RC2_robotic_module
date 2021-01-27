@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>colour_detection</name>
+  <name>motor_colour_control</name>
   <version>0.0.0</version>
   <description>The motor_colour_control package</description>
 

@@ -16,11 +16,13 @@ while(1):
 	# Captures the live stream frame-by-frame 
 	_, frame = cap.read() 
 	# Converts images from BGR to HSV 
-	hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
-	lower_color_thres = np.array([0,150,150]) 
-	upper_color_thres = np.array([255,255, 255])
-	# Here we are defining range of bluecolor in HSV 
-	# This creates a mask of blue coloured 
+	hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+	lower_color_thres = np.array([0, 120, 70]) 
+	upper_color_thres = np.array([10, 255, 255])
+
+	# Here we are defining range of red color in HSV 
+	# This creates a mask of red coloured 
 	# objects found in the frame. 
 	mask = cv2.inRange(hsv, lower_color_thres, upper_color_thres) 
 	mask = cv2.erode(mask, None, iterations=2)
@@ -45,8 +47,9 @@ while(1):
 			center0a = int(M["m10"] / M["m00"])
 			center0b = int(M["m01"] / M["m00"])
 			flag = 1
+		
+		print(float(int(M["m10"] / M["m00"]) - center0a)/1000, + float(int(M["m01"] / M["m00"]) - center0b)/1000)
 
-		#position_vector.data = [float(int(M["m10"] / M["m00"]) - center0a)/1000, float(int(M["m01"] / M["m00"]) - center0b)/1000]
 		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 		# only proceed if the radius meets a minimum size
 		if radius > 1:
@@ -57,7 +60,7 @@ while(1):
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
 	
 	# The bitwise and of the frame and mask is done so 
-	# that only the blue coloured objects are highlighted 
+	# that only the red coloured objects are highlighted 
 	# and stored in res 
 	res = cv2.bitwise_and(frame,frame, mask= mask) 
 	cv2.imshow('frame',frame) 

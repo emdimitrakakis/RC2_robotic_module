@@ -11,6 +11,8 @@ rospy.init_node('colour_detecion_node', anonymous=True)
 
 my_pub = rospy.Publisher('colour_detected', Float32MultiArray, queue_size = 1)
 
+rate = rospy.Rate(10)
+
 position_vector = Float32MultiArray()
 position_vector.data = []
 
@@ -62,7 +64,9 @@ while(1):
 			cv2.circle(frame, (int(x), int(y)), int(radius),
 				(0, 255, 255), 2)
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
+
 		my_pub.publish(position_vector)
+
 	
 	# The bitwise and of the frame and mask is done so 
 	# that only the blue coloured objects are highlighted 
