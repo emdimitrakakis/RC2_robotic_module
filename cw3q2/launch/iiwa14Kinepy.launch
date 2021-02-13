@@ -1,4 +1,0 @@
-<?xml version="1.0" ?>
-<launch>
-    <node name="cw3q2_node" pkg="cw3q2" type="iiwa14Kine_node.py" output="screen"/>
-</launch>
